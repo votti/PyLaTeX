@@ -1,50 +1,32 @@
 # -*- coding: utf-8 -*-
 """
-    pylatex.graphics
-    ~~~~~~~~~~~~~~~~
+This module implements the class that deals with graphics.
 
-    This module implements the class that deals with graphics.
-
-    :copyright: (c) 2014 by Jelte Fennema.
+..  :copyright: (c) 2014 by Jelte Fennema.
     :license: MIT, see License for more details.
 """
 
 import os.path
 
-from .utils import fix_filename, tmp_path, make_tmp
-from .base_classes import BaseLaTeXNamedContainer
+from .utils import fix_filename, make_temp_dir, _merge_packages_into_kwargs
+from .base_classes import Command, Float
 from .package import Package
-from .command import Command
+import uuid
 
 
-class Figure(BaseLaTeXNamedContainer):
+class Figure(Float):
 
-    """A class that represents a Graphic."""
+    """A class that represents a Figure environment."""
 
-    def __init__(self, data=None, position=None, seperate_paragraph=True):
-        """
-        :param data:
-        :param position:
-
-        :type data: list
-        :type position: str
-        :param data:
-        :param position:
-        :param seperate_paragraph:
-
-        :type data: list
-        :type position: str
-        :type seperate_paragraph: bool
-        """
-
+    def __init__(self, *args, **kwargs):
         packages = [Package('graphicx')]
-        super().__init__('figure', data=data, packages=packages,
-                         options=position,
-                         seperate_paragraph=seperate_paragraph)
+        _merge_packages_into_kwargs(packages, kwargs)
+
+        super().__init__(*args, **kwargs)
 
     def add_image(self, filename, width=r'0.8\textwidth',
                   placement=r'\centering'):
-        """Adds an image.
+        """Add an image.to the figure.
 
         :param filename:
         :param width:
@@ -64,58 +46,104 @@ class Figure(BaseLaTeXNamedContainer):
         self.append(Command('includegraphics', options=width,
                             arguments=fix_filename(filename)))
 
-    def add_caption(self, caption):
-        """Adds a caption to the figure.
 
-        :param caption:
-        :type caption: str
+class SubFigure(Figure):
+
+    """A class that represents a subfigure from the subcaption package.
+
+    :param data:
+    :param position:
+
+    :type data: list
+    :type position: str
+    :param data:
+    :param position:
+    :param seperate_paragraph:
+
+    :type data: list
+    :type position: str
+    :type seperate_paragraph: bool
+    """
+
+    def __init__(self, data=None, position=None, width=r'0.45\linewidth',
+                 seperate_paragraph=False, **kwargs):
+        packages = [Package('subcaption')]
+
+        super().__init__(data=data, packages=packages,
+                         position=position,
+                         arguments=width,
+                         seperate_paragraph=seperate_paragraph, **kwargs)
+
+    def add_image(self, filename, width=r'\linewidth',
+                  placement=None):
+        """Add an image to the subfigure.
+
+        :param filename:
+        :param width:
+        :param placement:
+
+        :type filename: str
+        :type width: str
+        :type placement: str
         """
 
-        self.append(Command('caption', caption))
+        super().add_image(filename, width=width, placement=placement)
 
 
-class Plt(Figure):
+class MatplotlibFigure(Figure):
+
     """A class that represents a plot created with matplotlib."""
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    container_name = 'figure'
 
-    def _save_plot(self, plt, *args, **kwargs):
-        """Saves the plot.
+    def __init__(self, *args, **kwargs):
+        import matplotlib.pyplot as plt
+        self._plt = plt
 
-        :param plt: matplotlib.pyplot
-        :type plt: module
+        super().__init__(*args, **kwargs)
+
+    def _save_plot(self, *args, **kwargs):
+        """Save the plot.
+
+        :param plt: The matplotlib.pyplot module
+        :type plt: matplotlib.pyplot
 
         :return: The basename with which the plot has been saved.
         :rtype: str
         """
 
-        make_tmp()
+        tmp_path = make_temp_dir()
 
-        basename = os.path.join(tmp_path, "plot")
-        filename = "{}.pdf".format(basename)
+        filename = os.path.join(tmp_path, str(uuid.uuid4()) + '.pdf')
 
-        while os.path.isfile(filename):
-            basename += "t"
-            filename = "{}.pdf".format(basename)
-
-        plt.savefig(filename, *args, **kwargs)
+        self._plt.savefig(filename, *args, **kwargs)
 
         return filename
 
-    def add_plot(self, plt, width=r'0.8\textwidth',
-                 placement=r'\centering', *args, **kwargs):
-        """Adds a plot.
+    def add_plot(self, *args, **kwargs):
+        """Add a plot.
 
-        :param plt: matplotlib.pyplot
-        :param width: The width of the plot.
-        :param placement: The placement of the plot.
-
-        :type plt: module
-        :type width: str
-        :type placement: str
+        Args
+        ----
+        args:
+            Arguments passed to plt.savefig for displaying the plot.
+        kwargs:
+            Keyword arguments passed to plt.savefig for displaying the plot. In
+            case these contain ``width`` or ``placement``, they will be used
+            for the same purpose as in the add_image command. Namely the width
+            and placement of the generated plot in the LaTeX document.
         """
 
-        filename = self._save_plot(plt, *args, **kwargs)
+        add_image_kwargs = {}
 
-        self.add_image(filename, width, placement)
+        for key in ('width', 'placement'):
+            if key in kwargs:
+                add_image_kwargs[key] = kwargs.pop(key)
+
+        filename = self._save_plot(*args, **kwargs)
+
+        self.add_image(filename, **add_image_kwargs)
+
+
+class MatplotlibSubFigure(SubFigure, MatplotlibFigure):
+    container_name = 'subfigure'

@@ -1,121 +1,158 @@
 #!/usr/bin/python
 
 """
-    Calls functions with all available arguments to check whether they still
-    exist. An error from this file means that the public API has been changed.
+Test to check when arguments of functions get changed.
+
+This test calls functions with all available arguments to check whether they
+still exist. An error from this file means that the public API has been
+changed.
 """
 
 import numpy as np
+import quantities as pq
 import matplotlib
 matplotlib.use('Agg')  # Not to use X server. For TravisCI.
 import matplotlib.pyplot as pyplot
 
-from pylatex import Document, Section, Math, Table, Figure, Package, TikZ, \
-    Axis, Plot, Plt, Itemize, Enumerate, Description
-from pylatex.command import Command
-from pylatex.numpy import Matrix, VectorName
+from pylatex import Document, Section, Math, Tabular, Figure, SubFigure, \
+    Package, TikZ, Axis, Plot, MatplotlibFigure, Itemize, Enumerate, \
+    Description, MultiColumn, MultiRow, Command, Matrix, VectorName, Quantity
 from pylatex.utils import escape_latex, fix_filename, dumps_list, bold, \
     italic, verbatim
 
 
-# Document
-doc = Document(
-    default_filepath='default_filepath',
-    documentclass='article',
-    fontenc='T1',
-    inputenc='utf8',
-    author='',
-    title='',
-    date='',
-    data=None,
-    maketitle=False
-)
+def test_document():
+    doc = Document(
+        default_filepath='default_filepath',
+        documentclass='article',
+        fontenc='T1',
+        inputenc='utf8',
+        author='',
+        title='',
+        date='',
+        data=None,
+        maketitle=False
+    )
 
-doc.append('Some text.')
+    doc.append('Some text.')
 
-doc.generate_tex(filepath='')
-doc.generate_pdf(filepath='', clean=True)
+    doc.generate_tex(filepath='')
+    doc.generate_pdf(filepath='', clean=True)
 
-# SectionBase
-s = Section(title='', numbering=True, data=None)
 
-# Math
-m = Math(data=None, inline=False)
+def test_section():
+    Section(title='', numbering=True, data=None)
 
-# Table
-t = Table(table_spec='|c|c|', data=None, pos=None, table_type='tabular')
 
-t.add_hline(start=None, end=None)
+def test_math():
+    Math(data=None, inline=False)
 
-t.add_row(cells=(1, 2), escape=False)
+    VectorName(name='')
 
-t.add_multicolumn(size=2, align='|c|', content='Multicol', cells=None,
-                  escape=False)
+    # Numpy
+    m = np.matrix([[2, 3, 4],
+                   [0, 0, 1],
+                   [0, 0, 2]])
 
-t.add_multirow(size=3, align='*', content='Multirow', hlines=True, cells=None,
-               escape=False)
+    Matrix(matrix=m, name='', mtype='p', alignment=None)
 
-# Command
-c = Command(command='documentclass', arguments=None, options=None,
+
+def test_table():
+    # Tabular
+    t = Tabular(table_spec='|c|c|', data=None, pos=None)
+
+    t.add_hline(start=None, end=None)
+
+    t.add_row(cells=(1, 2), escape=False)
+
+    t.add_multicolumn(size=2, align='|c|', content='Multicol', cells=None,
+                      escape=False)
+
+    t.add_multirow(size=3, align='*', content='Multirow', hlines=True,
+                   cells=None, escape=False)
+
+    # MultiColumn/MultiRow.
+    t.add_row((MultiColumn(size=2, align='|c|', data='MultiColumn'),))
+
+    t.add_row((MultiRow(size=2, width='*', data='MultiRow'),))
+
+
+def test_command():
+    Command(command='documentclass', arguments=None, options=None,
             packages=None)
-# Figure
-f = Figure(data=None, position=None)
 
-f.add_image(filename='', width=r'0.8\textwidth', placement=r'\centering')
 
-f.add_caption(caption='')
+def test_graphics():
+    f = Figure(data=None, position=None)
 
-# Plt
-plot = Plt(data=None, position=None)
+    f.add_image(filename='', width=r'0.8\textwidth', placement=r'\centering')
 
-x = [0, 1, 2, 3, 4, 5, 6]
-y = [15, 2, 7, 1, 5, 6, 9]
+    f.add_caption(caption='')
 
-pyplot.plot(x, y)
+    # Subfigure
+    s = SubFigure(data=None, position=None,
+                  width=r'0.45\linewidth', seperate_paragraph=False)
 
-plot.add_plot(plt=pyplot, width=r'0.8\textwidth', placement=r'\centering')
-plot.add_caption(caption='I am a caption.')
+    s.add_image(filename='', width='r\linewidth',
+                placement=None)
 
-# Numpy
-v = VectorName(name='')
+    s.add_caption(caption='')
 
-M = np.matrix([[2, 3, 4],
-               [0, 0, 1],
-               [0, 0, 2]])
-m = Matrix(matrix=M, name='', mtype='p', alignment=None)
+    # Matplotlib
+    plot = MatplotlibFigure(data=None, position=None)
 
-# Package
-p = Package(name='', base='usepackage', options=None)
+    x = [0, 1, 2, 3, 4, 5, 6]
+    y = [15, 2, 7, 1, 5, 6, 9]
 
-# PGFPlots
-tikz = TikZ(data=None)
+    pyplot.plot(x, y)
 
-a = Axis(data=None, options=None)
+    plot.add_plot(width=r'0.8\textwidth', placement=r'\centering')
+    plot.add_caption(caption='I am a caption.')
 
-p = Plot(name=None, func=None, coordinates=None, options=None)
+    # Quantities
+    Quantity(quantity=1*pq.kg)
+    Quantity(quantity=1*pq.kg, format_cb=lambda x: str(int(x)))
 
-# Utils
-escape_latex(s='')
 
-fix_filename(path='')
+def test_package():
+    # Package
+    Package(name='', base='usepackage', options=None)
 
-dumps_list(l=[], escape=False, token='\n')
 
-bold(s='')
+def test_tikz():
+    # PGFPlots
+    TikZ(data=None)
 
-italic(s='')
+    Axis(data=None, options=None)
 
-verbatim(s='', delimiter='|')
+    Plot(name=None, func=None, coordinates=None, error_bar=None, options=None)
 
-# Lists
-itemize = Itemize()
-itemize.add_item(s="item")
-itemize.append("append")
 
-enum = Enumerate()
-enum.add_item(s="item")
-enum.append("append")
+def test_lists():
+    # Lists
+    itemize = Itemize()
+    itemize.add_item(s="item")
+    itemize.append("append")
 
-desc = Description()
-desc.add_item(label="label", s="item")
-desc.append("append")
+    enum = Enumerate()
+    enum.add_item(s="item")
+    enum.append("append")
+
+    desc = Description()
+    desc.add_item(label="label", s="item")
+    desc.append("append")
+
+
+def test_utils():
+    # Utils
+    escape_latex(s='')
+
+    fix_filename(path='')
+
+    dumps_list(l=[], escape=False, token='\n')
+
+    bold(s='')
+
+    italic(s='')
+
+    verbatim(s='', delimiter='|')

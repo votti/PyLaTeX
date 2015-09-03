@@ -38,6 +38,7 @@ nosetests.xml
 
 # Testfiles
 *.pdf
+*.tex
 
 # Python 2 distribution files
 python2_source
@@ -45,3 +46,8 @@ python2_source
 # Venv
 venv
 venv2
+
+# Ignore generated doc files
+docs/source/examples
+docs/source/pylatex
+docs/source/_static/examples

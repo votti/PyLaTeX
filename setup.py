@@ -167,27 +167,32 @@ if sys.version_info[:2] <= (2, 6):
         "Python version."
     )
 
+extras = {
+    'docs': ['sphinx'],
+    'matrices': ['numpy'],
+    'matplotlib': ['matplotlib'],
+    'quantities': ['quantities', 'numpy'],
+    'testing': ['flake8', 'pep8-naming', 'flake8_docstrings', 'nose'],
+    'convert_to_py2': ['3to2'],
+}
+
 if sys.version_info[0] == 3:
     source_dir = '.'
 else:
     source_dir = 'python2_source'
+    del extras['convert_to_py2']
 
-extras = {
-    'matrices': ['numpy'],
-    'matplotlib': ['matplotlib'],
-    'testing': ['flake8', 'pep8-naming'],
-}
 
 extras['all'] = list(set([req for reqs in extras.values() for req in reqs]))
 
 setup(name='PyLaTeX',
-      version='0.7.1',
+      version='0.8.0',
       author='Jelte Fennema',
       author_email='pylatex@jeltef.nl',
       description='A Python library for creating LaTeX files',
       long_description=__doc__,
       package_dir={'': source_dir},
-      packages=['pylatex'],
+      packages=['pylatex', 'pylatex.base_classes'],
       url='https://github.com/JelteF/PyLaTeX',
       license='MIT',
       install_requires=['ordered-set'],

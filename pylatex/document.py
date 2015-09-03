@@ -1,54 +1,51 @@
 # -*- coding: utf-8 -*-
 """
-    pylatex.document
-    ~~~~~~~
+This module implements the class that deals with the full document.
 
-    This module implements the class that deals with the full document.
-
-    :copyright: (c) 2014 by Jelte Fennema.
+..  :copyright: (c) 2014 by Jelte Fennema.
     :license: MIT, see License for more details.
 """
 
 import os
 import subprocess
 import errno
+from .base_classes import Container, Command
 from .package import Package
-from .command import Command
-from .utils import dumps_list, rm_tmp
-from .base_classes import BaseLaTeXContainer
+from .utils import dumps_list, rm_temp_dir
 
 
-class Document(BaseLaTeXContainer):
+class Document(Container):
 
-    """
-    A class that contains a full LaTeX document. If needed, you can append
-    stuff to the preamble or the packages.
+    r"""
+    A class that contains a full LaTeX document.
+
+    If needed, you can append stuff to the preamble or the packages.
+
+    :param default_filepath: the default path to save files
+    :param documentclass: the LaTeX class of the document
+    :param fontenc: the option for the fontenc package
+    :param inputenc: the option for the inputenc package
+    :param author: the author of the document
+    :param title: the title of the document
+    :param date: the date of the document
+    :param data:
+    :param maketitle: whether `\\maketitle` command is activated or not.
+
+    :type default_filepath: str
+    :type documentclass: str or :class:`~pylatex.base_classes.command.Command`
+        instance
+    :type fontenc: str
+    :type inputenc: str
+    :type author: str
+    :type title: str
+    :type date: str
+    :type data: list
+    :type maketitle: bool
     """
 
     def __init__(self, default_filepath='default_filepath',
                  documentclass='article', fontenc='T1', inputenc='utf8',
                  author='', title='', date='', data=None, maketitle=False):
-        """
-            :param default_filepath: the default path to save files
-            :param documentclass: the LaTeX class of the document
-            :param fontenc: the option for the fontenc package
-            :param inputenc: the option for the inputenc package
-            :param author: the author of the document
-            :param title: the title of the document
-            :param date: the date of the document
-            :param data:
-            :param maketitle: whether `\maketitle` command is activated or not.
-
-            :type default_filepath: str
-            :type documentclass: str or :class:`command.Command` instance
-            :type fontenc: str
-            :type inputenc: str
-            :type author: str
-            :type title: str
-            :type date: str
-            :type data: list
-            :type maketitle: bool
-        """
 
         self.default_filepath = default_filepath
         self.maketitle = maketitle
@@ -73,10 +70,10 @@ class Document(BaseLaTeXContainer):
         super().__init__(data, packages=packages)
 
     def dumps(self):
-        """Represents the document as a string in LaTeX syntax.
+        """Represent the document as a string in LaTeX syntax.
 
-            :return:
-            :rtype: str
+        :return:
+        :rtype: str
         """
 
         document = r'\begin{document}' + os.linesep
@@ -95,26 +92,20 @@ class Document(BaseLaTeXContainer):
         return head + os.linesep + document
 
     def generate_tex(self, filepath=''):
-        """Generates a .tex file.
+        super().generate_tex(self.select_filepath(filepath))
+
+    def generate_pdf(self, filepath='', clean=True, compiler='pdflatex',
+                     silent=True):
+        """Generate a pdf file from the document.
 
         :param filepath: the name of the file
-        :type filepath: str
-        """
-
-        filepath = self.select_filepath(filepath)
-
-        with open(filepath + '.tex', 'w', encoding='utf-8') as newf:
-            self.dump(newf)
-
-    def generate_pdf(self, filepath='', clean=True, compiler='pdflatex'):
-        """Generates a .pdf file.
-
-            :param filepath: the name of the file
-            :param clean: whether non-pdf files created by `pdflatex` must be
+        :param clean: whether non-pdf files created by `pdflatex` must be
             removed or not
+        :param silent: whether to hide compiler output
 
-            :type filepath: str
-            :type clean: bool
+        :type filepath: str
+        :type clean: bool
+        :type silent: bool
         """
 
         filepath = self.select_filepath(filepath)
@@ -127,10 +118,17 @@ class Document(BaseLaTeXContainer):
 
         self.generate_tex(basename)
 
-        command = compiler + ' --jobname="' + basename + '" "' + \
-            basename + '.tex"'
+        command = [compiler, '--interaction', 'nonstopmode',
+                   '--jobname', basename, basename + '.tex']
 
-        subprocess.check_call(command, shell=True)
+        try:
+            output = subprocess.check_output(command)
+        except subprocess.CalledProcessError as e:
+            print(e.output.decode())
+            raise e
+        else:
+            if not silent:
+                print(output.decode())
 
         if clean:
             for ext in ['aux', 'log', 'out', 'tex']:
@@ -141,19 +139,19 @@ class Document(BaseLaTeXContainer):
                     if e.errno != errno.ENOENT:
                         raise
 
-        rm_tmp()
+            rm_temp_dir()
         os.chdir(cur_dir)
 
     def select_filepath(self, filepath):
-        """Makes a choice between `filepath` and `self.default_filepath`.
+        """Make a choice between `filepath` and `self.default_filepath`.
 
-            :param filepath: the filepath to be compared with
+        :param filepath: the filepath to be compared with
             `self.default_filepath`
 
-            :type filepath: str
+        :type filepath: str
 
-            :return: The selected filepath
-            :rtype: str
+        :return: The selected filepath
+        :rtype: str
         """
 
         if filepath == '':

@@ -1,75 +1,83 @@
 # -*- coding: utf-8 -*-
 """
-    pylatex.pgfplots
-    ~~~~~~~~~~~~~~~~
+This module implements the classes used to show plots.
 
-    This module implements the classes used to show plots.
-
-    :copyright: (c) 2014 by Jelte Fennema.
+..  :copyright: (c) 2014 by Jelte Fennema.
     :license: MIT, see License for more details.
 """
 
 
-from pylatex.base_classes import BaseLaTeXClass, BaseLaTeXNamedContainer
+from pylatex.base_classes import LatexObject, Environment, Command
 from pylatex.package import Package
-from pylatex.command import Command
 
 
-class TikZ(BaseLaTeXNamedContainer):
+class TikZ(Environment):
 
-    """Basic TikZ container class."""
+    """Basic TikZ container class.
+
+    :param data:
+
+    :type data: list
+    """
+
+    container_name = 'tikzpicture'
 
     def __init__(self, data=None):
-        """
-            :param data:
-
-            :type data: list
-        """
 
         packages = [Package('tikz')]
 
-        super().__init__('tikzpicture', data=data, packages=packages)
+        super().__init__(data=data, packages=packages)
 
 
-class Axis(BaseLaTeXNamedContainer):
+class Axis(Environment):
 
-    """PGFPlots axis container class, this contains plots."""
+    """PGFPlots axis container class, this contains plots.
+
+    :param data:
+    :param options:
+
+    :type data: list
+    :type options: str
+    """
 
     def __init__(self, data=None, options=None):
-        """
-            :param data:
-            :param options:
-
-            :type data: list
-            :type options: str or list or :class:`parameters.Options` instance
-        """
-
         packages = [Package('pgfplots'), Command('pgfplotsset',
                                                  'compat=newest')]
 
-        super().__init__('axis', data=data, options=options, packages=packages)
+        super().__init__(data=data, options=options, packages=packages)
 
 
-class Plot(BaseLaTeXClass):
+class Plot(LatexObject):
 
-    """PGFPlot normal plot."""
+    r"""A class representing a PGFPlot.
 
-    def __init__(self, name=None, func=None, coordinates=None, options=None):
-        """
-            :param name:
-            :param func:
-            :param coordinates:
-            :param options:
+    :param name:
+    :param func:
+    :param coordinates:
+    :param options:
 
-            :type name: str
-            :type func: str
-            :type coordinates: list
-            :type options: str or list or :class:`parameters.Options` instance
-        """
+    :type name: str
+    :type func: str
+    :type coordinates: list
+    :type options: str
 
+    TODO:
+
+    options type can also be list or
+        :class:`~pylatex.base_classes.command.Options` instance
+    """
+
+    def __init__(
+            self,
+            name=None,
+            func=None,
+            coordinates=None,
+            error_bar=None,
+            options=None):
         self.name = name
         self.func = func
         self.coordinates = coordinates
+        self.error_bar = error_bar
         self.options = options
 
         packages = [Package('pgfplots'), Command('pgfplotsset',
@@ -78,10 +86,10 @@ class Plot(BaseLaTeXClass):
         super().__init__(packages=packages)
 
     def dumps(self):
-        """Represents the plot as a string in LaTeX syntax.
+        """Represent the plot as a string in LaTeX syntax.
 
-            :return:
-            :rtype: str
+        :return:
+        :rtype: str
         """
 
         string = Command('addplot', options=self.options).dumps()
@@ -89,8 +97,18 @@ class Plot(BaseLaTeXClass):
         if self.coordinates is not None:
             string += ' coordinates {\n'
 
-            for x, y in self.coordinates:
-                string += '(' + str(x) + ',' + str(y) + ')\n'
+            if self.error_bar is None:
+                for x, y in self.coordinates:
+                    # ie: "(x,y)"
+                    string += '(' + str(x) + ',' + str(y) + ')\n'
+
+            else:
+                for (x, y), (e_x, e_y) in zip(self.coordinates,
+                                              self.error_bar):
+                    # ie: "(x,y) +- (e_x,e_y)"
+                    string += '(' + str(x) + ',' + str(y) + \
+                        ') +- (' + str(e_x) + ',' + str(e_y) + ')\n'
+
             string += '};\n\n'
 
         elif self.func is not None:
