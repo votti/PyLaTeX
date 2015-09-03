@@ -157,4 +157,7 @@ class Document(Container):
         if filepath == '':
             return self.default_filepath
         else:
+            if os.path.basename(filepath) == '':
+                filepath = os.path.join(filepath, os.path.basename(
+                    self.default_filepath))
             return filepath

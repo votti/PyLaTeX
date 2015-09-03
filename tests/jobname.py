@@ -23,4 +23,7 @@ def test():
 
     assert os.path.isfile(path + '.pdf')
 
+    filename = doc.select_filepath(os.path.join(folder, ''))
+    assert '' != os.path.basename(filename)
+
     shutil.rmtree(folder)
